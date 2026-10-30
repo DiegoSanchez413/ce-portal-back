@@ -37,4 +37,14 @@ return [
         ],
     ],
 
+    'turnstile' => [
+        'secret' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
+    'soft' => [
+        'url' => env('SOFT_API_URL'),
+        'key' => env('SOFT_API_KEY'),
+        'timeout' => (int) env('SOFT_API_TIMEOUT', 15),
+    ],
+
 ];

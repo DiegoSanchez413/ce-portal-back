@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\Support\SoftFixtures;
 use Tests\TestCase;
 
 /*
@@ -17,8 +19,20 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Integration');
+
+pest()->use(RefreshDatabase::class)
+    ->beforeEach(function (): void {
+        SoftFixtures::createTables();
+        SoftFixtures::createFileTables();
+        Http::fake([
+            'soft.test/*/sms' => Http::response(['message_id' => '1']),
+            'soft.test/*/notifications' => Http::response(['notification_id' => 1]),
+        ]);
+    })
+    ->in('Feature/ClientPortal');
+
+require_once __DIR__.'/Feature/ClientPortal/Helpers.php';
 
 /*
 |--------------------------------------------------------------------------

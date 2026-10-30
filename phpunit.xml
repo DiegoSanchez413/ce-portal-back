@@ -29,6 +29,12 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <env name="LOG_CHANNEL" value="null"/>
+        <env name="SOFT_API_URL" value="http://soft.test/api/internal/client-portal"/>
+        <env name="SOFT_API_KEY" value="test-key"/>
+        <env name="PORTAL_SMS_DRIVER" value="soft"/>
+        <env name="TURNSTILE_SECRET_KEY" value=""/>
+        <env name="L5_SWAGGER_GENERATE_ALWAYS" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "amgti/amgsoftbacknew",
+    "name": "amgti/ce-portal-back",
     "type": "project",
-    "description": "Backend nuevo de AMG: portal My Credit Experts y migración gradual del Soft.",
+    "description": "Backend del portal de clientes My Credit Experts y base de la migración gradual del Soft.",
     "keywords": [
         "laravel",
         "framework"
@@ -10,8 +10,12 @@
     "license": "MIT",
     "require": {
         "php": "^8.5",
+        "darkaonline/l5-swagger": "^11.2",
         "laravel/framework": "^13.17",
-        "laravel/tinker": "^3.0"
+        "laravel/horizon": "^5.50",
+        "laravel/sanctum": "^4.3",
+        "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.35"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -73,6 +77,10 @@
             "@lint",
             "@analyse",
             "@test"
+        ],
+        "test:integration": [
+            "@php artisan config:clear --ansi",
+            "@php vendor/bin/pest --configuration=phpunit.integration.xml"
         ]
     },
     "extra": {

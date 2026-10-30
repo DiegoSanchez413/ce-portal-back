@@ -1,0 +1,37 @@
+# Entorno local: la app usa la red del host para llegar a la MySQL y al Redis del Soft.
+services:
+  app:
+    build:
+      context: docker/php
+    image: ce-portal-back-php
+    network_mode: host
+    volumes:
+      - .:/app
+    command: php artisan serve --host=127.0.0.1 --port=8002
+
+  horizon:
+    image: ce-portal-back-php
+    network_mode: host
+    volumes:
+      - .:/app
+    command: php artisan horizon
+    depends_on:
+      - app
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+
+  # Base aislada para los tests de integración con el esquema del Soft.
+  mysql-test:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: amg_test
+    command: --log-bin-trust-function-creators=1 --sql-mode=""
+    ports:
+      - "127.0.0.1:3307:3306"
+    tmpfs:
+      - /var/lib/mysql
