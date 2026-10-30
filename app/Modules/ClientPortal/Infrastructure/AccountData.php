@@ -96,7 +96,7 @@ class AccountData
             ->join('ncr_request_details as nrd', fn ($join) => $join->on('nrd.ncr_request_id', '=', 'nr.id')->where('nrd.status', 1))
             ->join('scores as s', 's.id', '=', 'nrd.score_id')
             ->where(fn ($q) => $q->whereIn('nr.client_account_id', $accountIds)->orWhere('nr.lead_id', $leadId))
-            ->whereNotIn('nr.status', ['ANNULLED', 'FAILED'])
+            ->where('nr.status', 'COMPLETED')
             ->orderByDesc('nr.created_at')
             ->get(['s.id as score_id', 's.equifax', 's.experian', 's.transunion', 's.date', 's.route_pdf', 'nr.created_at'])
             ->unique('score_id')

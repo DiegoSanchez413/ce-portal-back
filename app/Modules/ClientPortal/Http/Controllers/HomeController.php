@@ -8,6 +8,7 @@ use App\Modules\ClientPortal\Application\ClientRequests;
 use App\Modules\ClientPortal\Application\PaymentDue;
 use App\Modules\ClientPortal\Domain\CardView;
 use App\Modules\ClientPortal\Domain\ClientTime;
+use App\Modules\ClientPortal\Domain\CreditScore;
 use App\Modules\ClientPortal\Domain\DocumentStatus;
 use App\Modules\ClientPortal\Domain\Names;
 use App\Modules\ClientPortal\Http\CurrentSession;
@@ -93,8 +94,8 @@ final class HomeController
         $first = $reports[count($reports) - 1];
         $bureaus = [];
         foreach (['equifax', 'experian', 'transunion'] as $bureau) {
-            $score = $latest->{$bureau} !== null ? (int) $latest->{$bureau} : null;
-            $base = $first->{$bureau} !== null ? (int) $first->{$bureau} : null;
+            $score = CreditScore::parse($latest->{$bureau});
+            $base = CreditScore::parse($first->{$bureau});
             $bureaus[$bureau] = ['score' => $score, 'delta' => $score !== null && $base !== null ? $score - $base : null];
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\ClientPortal\Http\Controllers;
 
+use App\Modules\ClientPortal\Domain\CreditScore;
 use App\Modules\ClientPortal\Http\CurrentSession;
 use App\Modules\ClientPortal\Infrastructure\AccountData;
 use App\Modules\ClientPortal\Infrastructure\ClientDirectory;
@@ -42,8 +43,8 @@ final class CreditController
                 'has_pdf' => trim((string) $report->route_pdf) !== '',
             ];
             foreach (self::BUREAUS as $bureau) {
-                $score = $report->{$bureau} !== null ? (int) $report->{$bureau} : null;
-                $before = $previous?->{$bureau} !== null ? (int) $previous->{$bureau} : null;
+                $score = CreditScore::parse($report->{$bureau});
+                $before = CreditScore::parse($previous?->{$bureau});
                 $item[$bureau] = ['score' => $score, 'delta' => $score !== null && $before !== null ? $score - $before : null];
             }
             $items[] = $item;

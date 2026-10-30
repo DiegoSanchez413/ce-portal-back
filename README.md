@@ -22,7 +22,7 @@ curl http://localhost:8002/api/v1/status                # {"status":"ok","databa
 | Horizon | http://localhost:8002/horizon |
 | Mailpit | http://localhost:8025 |
 
-El front corre en `http://localhost:3000`: el back debe usarse como `localhost` (no `127.0.0.1`) para que la cookie de sesión `SameSite=Strict` viaje.
+El front corre en `http://localhost:3001`: el back debe usarse como `localhost` (no `127.0.0.1`) para que la cookie de sesión `SameSite=Strict` viaje.
 
 ## Calidad
 

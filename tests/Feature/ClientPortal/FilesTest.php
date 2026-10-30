@@ -51,7 +51,7 @@ it('muestra el estado vigente de cada documento con el motivo del rechazo', func
         ->assertJsonPath('2.status', 'missing');
 });
 
-it('lleva a Inicio los documentos que piden atención salvo el SSN faltante', function (): void {
+it('lleva a Inicio los documentos que piden atención, incluido el SSN faltante', function (): void {
     [$lead, $cookie] = filesSession();
     seedDocuments($lead);
     app()->instance(AccountData::class, new class extends AccountData
@@ -87,9 +87,10 @@ it('lleva a Inicio los documentos que piden atención salvo el SSN faltante', fu
         }
     });
 
-    portalGet($cookie, 'home')->assertOk()->assertJsonCount(2, 'files')
+    portalGet($cookie, 'home')->assertOk()->assertJsonCount(3, 'files')
         ->assertJsonPath('files.0.type', 'id')
-        ->assertJsonPath('files.1.type', 'utility_bill');
+        ->assertJsonPath('files.1.type', 'utility_bill')
+        ->assertJsonPath('files.2.type', 'ssn');
 });
 
 it('firma 5 minutos la URL del ID con la key normalizada y no permite ver el SSN', function (): void {

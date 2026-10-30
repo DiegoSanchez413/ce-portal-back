@@ -47,13 +47,12 @@ final class DocumentStatus
         return ['type' => $base['type'], 'status' => $status] + $base;
     }
 
-    // Documentos que piden atención en Inicio: rechazados, vencidos, faltantes (salvo el SSN, que es opcional) o que vencen en 30 días.
+    // Documentos que piden atención en Inicio: rechazados, vencidos, faltantes o que vencen en 30 días.
     /** @param array{type: string, status: string, expires_in_days: int|null} $document */
     public static function needsAttention(array $document): bool
     {
         return match ($document['status']) {
-            'rejected', 'expired' => true,
-            'missing' => $document['type'] !== 'ssn',
+            'rejected', 'expired', 'missing' => true,
             'approved' => $document['expires_in_days'] !== null && $document['expires_in_days'] <= 30,
             default => false,
         };
