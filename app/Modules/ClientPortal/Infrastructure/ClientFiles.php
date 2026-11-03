@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\ClientPortal\Infrastructure;
 
+use App\Modules\ClientPortal\Domain\DocumentStatus;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
@@ -13,6 +14,8 @@ use stdClass;
  */
 class ClientFiles
 {
+    private const OPEN_SSN_REQUESTS = ['REQUESTED', 'UPLOADED', 'REJECTED'];
+
     /** @return array<int, stdClass> archivo vigente por tipo de documento, incluido el rechazado */
     public function currentDocuments(int $leadId): array
     {
@@ -38,6 +41,18 @@ class ClientFiles
         }
 
         return $byType;
+    }
+
+    /** @return list<int> documentos que se le muestran al cliente: ID y UB siempre; SSN si ya lo tiene o si se lo pidieron en el WorkPlan Inbox */
+    public function documentTypes(int $leadId): array
+    {
+        $types = [DocumentStatus::ID, DocumentStatus::UTILITY_BILL];
+
+        $hasSsn = DB::table('files_leads')->where('lead_id', $leadId)->where('document_type_id', DocumentStatus::SSN)->whereNull('deleted_at')->exists()
+            || DB::table('wpi_file_requests')->where('lead_id', $leadId)->where('document_type_id', DocumentStatus::SSN)
+                ->whereIn('status', self::OPEN_SSN_REQUESTS)->exists();
+
+        return $hasSsn ? [...$types, DocumentStatus::SSN] : $types;
     }
 
     /** @return list<stdClass> cartas enviadas por el cliente, de la más reciente a la más antigua */

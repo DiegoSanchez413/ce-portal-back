@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\ClientPortal\Http\Controllers;
 
 use App\Modules\ClientPortal\Domain\DocumentStatus;
+use App\Modules\ClientPortal\Domain\Names;
 use App\Modules\ClientPortal\Http\CurrentSession;
+use App\Modules\ClientPortal\Infrastructure\ClientDirectory;
 use App\Modules\ClientPortal\Infrastructure\ClientFiles;
 use App\Modules\ClientPortal\Infrastructure\EventLog;
 use App\Modules\ClientPortal\Infrastructure\TempUploads;
@@ -66,11 +68,11 @@ final class FilesController
             new OA\Response(response: 409, description: 'Already in review'),
             new OA\Response(response: 422, description: 'Invalid files'),
         ])]
-    public function upload(Request $request, string $type, TempUploads $temp, SoftGateway $soft, EventLog $events): JsonResponse
+    public function upload(Request $request, string $type, TempUploads $temp, SoftGateway $soft, EventLog $events, ClientDirectory $directory): JsonResponse
     {
         $session = CurrentSession::of($request);
         $typeId = array_search($type, DocumentStatus::TYPES, true);
-        if ($typeId === false) {
+        if ($typeId === false || ! in_array($typeId, $this->files->documentTypes($session->leadId), true)) {
             abort(404);
         }
 
@@ -104,10 +106,13 @@ final class FilesController
         $events->record('document_uploaded', $session->id, $session->leadId, $session->accountId,
             ['document_type' => $type, 'files' => count($uploads)], 'file', (string) $response->json('file_lead_id'));
 
+        $lead = $directory->lead($session->leadId);
+        $account = $directory->account($session->accountId);
         $soft->post('notifications', [
             'client_account_id' => $session->accountId,
             'recipient' => 'agent',
-            'text' => '<b>Client Portal</b>: Client uploaded '.self::LABELS[$type].' from the portal',
+            'text' => sprintf('<b>Client Portal · Document uploaded</b>: %s (%s) · Client uploaded %s from the portal',
+                e(Names::full($lead->first_name ?? null, $lead->last_name ?? null)), e((string) ($account->account ?? '')), self::LABELS[$type]),
         ]);
 
         return response()->json(DocumentStatus::of($typeId, $this->files->currentDocuments($session->leadId)[$typeId] ?? null), 201);
@@ -118,6 +123,6 @@ final class FilesController
     {
         $current = $this->files->currentDocuments($leadId);
 
-        return array_map(fn (int $type): array => DocumentStatus::of($type, $current[$type] ?? null), array_keys(DocumentStatus::TYPES));
+        return array_map(fn (int $type): array => DocumentStatus::of($type, $current[$type] ?? null), $this->files->documentTypes($leadId));
     }
 }

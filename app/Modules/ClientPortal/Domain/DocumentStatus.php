@@ -15,6 +15,10 @@ final class DocumentStatus
 {
     public const TYPES = [1 => 'id', 2 => 'utility_bill', 3 => 'ssn'];
 
+    public const ID = 1;
+
+    public const UTILITY_BILL = 2;
+
     public const SSN = 3;
 
     /** @return array{type: string, status: string, uploaded_at: string|null, expiration: string|null, expires_in_days: int|null, reject_reason: string|null} */

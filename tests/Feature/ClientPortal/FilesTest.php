@@ -44,16 +44,29 @@ it('muestra el estado vigente de cada documento con el motivo del rechazo', func
     [$lead, $cookie] = filesSession();
     seedDocuments($lead);
 
-    portalGet($cookie, 'files')->assertOk()
+    portalGet($cookie, 'files')->assertOk()->assertJsonCount(2)
         ->assertJsonPath('0', ['type' => 'id', 'status' => 'approved', 'uploaded_at' => '2026-01-10', 'expiration' => '2026-11-09', 'expires_in_days' => 20, 'reject_reason' => null])
         ->assertJsonPath('1.status', 'rejected')
-        ->assertJsonPath('1.reject_reason', 'The bill is older than 60 days.')
-        ->assertJsonPath('2.status', 'missing');
+        ->assertJsonPath('1.reject_reason', 'The bill is older than 60 days.');
 });
 
-it('lleva a Inicio los documentos que piden atención, incluido el SSN faltante', function (): void {
+it('lista el SSN solo cuando se lo pidieron en el WorkPlan Inbox o ya lo tiene', function (): void {
     [$lead, $cookie] = filesSession();
     seedDocuments($lead);
+    DB::table('wpi_file_requests')->insert(['lead_id' => $lead, 'document_type_id' => 3, 'status' => 'CANCELED']);
+
+    portalGet($cookie, 'files')->assertOk()->assertJsonCount(2);
+
+    DB::table('wpi_file_requests')->insert(['lead_id' => $lead, 'document_type_id' => 3, 'status' => 'REQUESTED']);
+
+    portalGet($cookie, 'files')->assertOk()->assertJsonCount(3)
+        ->assertJsonPath('2', ['type' => 'ssn', 'status' => 'missing', 'uploaded_at' => null, 'expiration' => null, 'expires_in_days' => null, 'reject_reason' => null]);
+});
+
+it('lleva a Inicio los documentos que piden atención, y el SSN faltante solo si se lo pidieron', function (): void {
+    [$lead, $cookie] = filesSession();
+    seedDocuments($lead);
+    DB::table('wpi_file_requests')->insert(['lead_id' => $lead, 'document_type_id' => 3, 'status' => 'REQUESTED']);
     app()->instance(AccountData::class, new class extends AccountData
     {
         public function plan(string $accountId): ?stdClass
@@ -131,6 +144,8 @@ it('rechaza más de 3 archivos, tipos no permitidos y documentos en revisión', 
 
     $post('id', array_fill(0, 4, fakePng('a.jpg')))->assertUnprocessable();
     $post('id', [UploadedFile::fake()->createWithContent('a.webp', 'RIFF0000WEBPVP8 ')])->assertUnprocessable();
+
+    $post('ssn', [fakePng('ssn.png')])->assertNotFound();
 
     DB::table('files_leads')->insert(['lead_id' => $lead, 'document_type_id' => 3, 'status' => 'PENDING_APPROVE', 'created_at' => '2026-10-19 10:00:00']);
     $post('ssn', [fakePng('ssn.png')])->assertStatus(409);

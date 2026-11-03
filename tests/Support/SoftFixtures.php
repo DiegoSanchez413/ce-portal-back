@@ -55,6 +55,12 @@ final class SoftFixtures
             $table->increments('id');
             $table->date('expiration')->nullable();
         });
+        Schema::create('wpi_file_requests', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->unsignedInteger('lead_id');
+            $table->unsignedInteger('document_type_id');
+            $table->string('status');
+        });
         Schema::create('file_leads_tracking', function (Blueprint $table): void {
             $table->increments('id');
             $table->unsignedInteger('file_lead_id');

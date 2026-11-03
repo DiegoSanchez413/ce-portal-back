@@ -126,7 +126,7 @@ final class HomeController
         $current = $this->files->currentDocuments($leadId);
 
         return array_values(array_filter(
-            array_map(fn (int $type): array => DocumentStatus::of($type, $current[$type] ?? null), array_keys(DocumentStatus::TYPES)),
+            array_map(fn (int $type): array => DocumentStatus::of($type, $current[$type] ?? null), $this->files->documentTypes($leadId)),
             [DocumentStatus::class, 'needsAttention'],
         ));
     }
