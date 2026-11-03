@@ -89,6 +89,20 @@ it('guarda una fila por sección y suma las visitas', function (): void {
         ->and(DB::table('client_portal_events')->where('event_type', 'section_view')->count())->toBe(2);
 });
 
+it('lleva las visitas a una fila nueva cuando se cambia de cuenta en la misma sesión', function (): void {
+    [$lead, , $cookie] = portalSession();
+    $other = SoftFixtures::account($lead, 'CE1009758');
+    $view = fn () => test()->withCredentials()->withUnencryptedCookie('cp_session', $cookie)->postJson('/api/v1/events/section-view', ['section' => 'home'])->assertNoContent();
+
+    $view();
+    DB::table('client_portal_sessions')->update(['client_account_id' => $other]);
+    $view();
+    $view();
+
+    expect(DB::table('client_portal_events')->where('section', 'home')->where('client_account_id', $other)->value('occurrences'))->toBe(2)
+        ->and(DB::table('client_portal_events')->where('section', 'home')->count())->toBe(2);
+});
+
 it('guarda el idioma del portal del cliente', function (): void {
     [$lead, , $cookie] = portalSession();
 

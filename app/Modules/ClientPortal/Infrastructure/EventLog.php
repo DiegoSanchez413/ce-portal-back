@@ -47,7 +47,7 @@ final class EventLog
                 'created_at' => now(),
                 'last_at' => now(),
             ]],
-            ['session_id', 'event_type', 'section'],
+            ['session_id', 'event_type', 'section', 'client_account_id'],
             ['occurrences' => DB::raw('occurrences + 1'), 'last_at' => now()],
         );
     }
