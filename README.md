@@ -12,14 +12,14 @@ docker compose build app
 docker compose run --rm --no-deps app composer install
 docker compose run --rm --no-deps app php artisan key:generate
 docker compose up -d app horizon mailpit
-curl http://localhost:8002/api/v1/status                # {"status":"ok","database":"ok"}
+curl http://localhost:8004/api/v1/status                # {"status":"ok","database":"ok"}
 ```
 
 | Servicio | URL |
 |---|---|
-| API | http://localhost:8002/api/v1 |
-| OpenAPI (JSON) / Swagger UI | http://localhost:8002/docs · http://localhost:8002/api/documentation |
-| Horizon | http://localhost:8002/horizon |
+| API | http://localhost:8004/api/v1 |
+| OpenAPI (JSON) / Swagger UI | http://localhost:8004/docs · http://localhost:8004/api/documentation |
+| Horizon | http://localhost:8004/horizon |
 | Mailpit | http://localhost:8025 |
 
 El front corre en `http://localhost:3001`: el back debe usarse como `localhost` (no `127.0.0.1`) para que la cookie de sesión `SameSite=Strict` viaje.

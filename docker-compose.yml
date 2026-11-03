@@ -7,7 +7,7 @@ services:
     network_mode: host
     volumes:
       - .:/app
-    command: php artisan serve --host=127.0.0.1 --port=8002
+    command: php artisan serve --host=127.0.0.1 --port=8004
 
   horizon:
     image: ce-portal-back-php
