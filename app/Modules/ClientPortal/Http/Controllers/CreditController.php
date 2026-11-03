@@ -31,14 +31,14 @@ final class CreditController
     public function index(Request $request): JsonResponse
     {
         $session = CurrentSession::of($request);
-        $reports = $this->data->creditReports($session->leadId, $this->accountIds($session->leadId));
+        $reports = $this->data->creditReports($session->leadId, $this->directory->allAccountIds($session->leadId));
         $items = [];
 
         foreach ($reports as $i => $report) {
             $previous = $reports[$i + 1] ?? null;
             $item = [
-                'id' => (int) $report->score_id,
-                'date' => CarbonImmutable::parse((string) ($report->date ?? $report->created_at))->toDateString(),
+                'id' => (int) $report->request_id,
+                'date' => CarbonImmutable::parse((string) $report->obtained_at)->toDateString(),
                 'first_report' => $previous === null,
                 'has_pdf' => trim((string) $report->route_pdf) !== '',
             ];
@@ -62,8 +62,8 @@ final class CreditController
     public function download(Request $request, int $id, EventLog $events): JsonResponse
     {
         $session = CurrentSession::of($request);
-        $report = collect($this->data->creditReports($session->leadId, $this->accountIds($session->leadId)))
-            ->first(fn (\stdClass $r): bool => (int) $r->score_id === $id);
+        $report = collect($this->data->creditReports($session->leadId, $this->directory->allAccountIds($session->leadId)))
+            ->first(fn (\stdClass $r): bool => (int) $r->request_id === $id);
         $key = $report === null ? '' : self::s3Key((string) $report->route_pdf);
 
         if ($key === '') {
@@ -83,11 +83,5 @@ final class CreditController
         $key = (string) preg_replace('#/{2,}#', '/', $key);
 
         return trim($key, '/');
-    }
-
-    /** @return list<string> */
-    private function accountIds(int $leadId): array
-    {
-        return array_map(fn (\stdClass $a): string => (string) $a->id, $this->directory->accountsOf($leadId));
     }
 }

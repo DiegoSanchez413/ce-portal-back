@@ -60,7 +60,7 @@ final class HomeController
                 'total_payments' => (int) $plan->months,
                 'monthly_amount' => $monthly,
             ],
-            'scores' => $this->scores($session->leadId, $accountIds),
+            'scores' => $this->scores($session->leadId, $this->directory->allAccountIds($session->leadId)),
             'payments' => $this->payments($session->accountId, $status, $monthly),
             'card_alert' => $this->cardAlert($session->accountId),
             'files' => $this->filesNeedingAttention($session->leadId),
@@ -99,7 +99,7 @@ final class HomeController
             $bureaus[$bureau] = ['score' => $score, 'delta' => $score !== null && $base !== null ? $score - $base : null];
         }
 
-        return ['date' => CarbonImmutable::parse((string) ($latest->date ?? $latest->created_at))->toDateString()] + $bureaus;
+        return ['date' => CarbonImmutable::parse((string) $latest->obtained_at)->toDateString()] + $bureaus;
     }
 
     /** @return array<string, mixed> */

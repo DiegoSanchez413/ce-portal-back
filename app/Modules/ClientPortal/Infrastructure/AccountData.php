@@ -87,8 +87,8 @@ class AccountData
     }
 
     /**
-     * @param  list<string>  $accountIds
-     * @return list<stdClass> Credit Reports del cliente (todas sus cuentas), del más reciente al más antiguo
+     * @param  list<string>  $accountIds  todas las cuentas del lead, de cualquier servicio
+     * @return list<stdClass> Credit Reports completados del cliente, del obtenido más recientemente al más antiguo
      */
     public function creditReports(int $leadId, array $accountIds): array
     {
@@ -97,10 +97,9 @@ class AccountData
             ->join('scores as s', 's.id', '=', 'nrd.score_id')
             ->where(fn ($q) => $q->whereIn('nr.client_account_id', $accountIds)->orWhere('nr.lead_id', $leadId))
             ->where('nr.status', 'COMPLETED')
-            ->orderByDesc('nr.created_at')
-            ->get(['s.id as score_id', 's.equifax', 's.experian', 's.transunion', 's.date', 's.route_pdf', 'nr.created_at'])
-            ->unique('score_id')
-            ->values()
+            ->orderByDesc('nrd.created_at')
+            ->orderByDesc('nr.id')
+            ->get(['nr.id as request_id', 'nrd.created_at as obtained_at', 's.equifax', 's.experian', 's.transunion', 's.route_pdf'])
             ->all());
     }
 

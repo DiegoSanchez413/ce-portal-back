@@ -49,6 +49,17 @@ final class ClientDirectory
             ->first();
     }
 
+    /** @return list<string> ids de todas las cuentas del lead, de cualquier servicio */
+    public function allAccountIds(int $leadId): array
+    {
+        return array_values(DB::table('client_accounts as ca')
+            ->join('clients as c', 'c.id', '=', 'ca.client_id')
+            ->where('c.lead_id', $leadId)
+            ->pluck('ca.id')
+            ->map(fn ($id): string => (string) $id)
+            ->all());
+    }
+
     /** @return list<stdClass> cuentas Credit Experts del lead, de la más reciente a la más antigua */
     public function accountsOf(int $leadId): array
     {

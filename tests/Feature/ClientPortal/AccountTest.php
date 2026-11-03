@@ -35,9 +35,9 @@ function fakeAccountData(array $overrides = []): void
         public function creditReports(int $leadId, array $accountIds): array
         {
             return $this->o['reports'] ?? [
-                (object) ['score_id' => 3, 'equifax' => 640, 'experian' => 600, 'transunion' => null, 'date' => '2026-10-10', 'route_pdf' => '/SM/1/cr3.pdf', 'created_at' => '2026-10-10'],
-                (object) ['score_id' => 2, 'equifax' => 630, 'experian' => 610, 'transunion' => 650, 'date' => '2026-08-10', 'route_pdf' => '', 'created_at' => '2026-08-10'],
-                (object) ['score_id' => 1, 'equifax' => 600, 'experian' => 590, 'transunion' => 640, 'date' => '2026-06-10', 'route_pdf' => '/SM/1/cr1.pdf', 'created_at' => '2026-06-10'],
+                (object) ['request_id' => 3, 'equifax' => 640, 'experian' => 600, 'transunion' => null, 'route_pdf' => '/SM/1/cr3.pdf', 'obtained_at' => '2026-10-10 09:00:00'],
+                (object) ['request_id' => 2, 'equifax' => 630, 'experian' => 610, 'transunion' => 650, 'route_pdf' => '', 'obtained_at' => '2026-08-10 09:00:00'],
+                (object) ['request_id' => 1, 'equifax' => 600, 'experian' => 590, 'transunion' => 640, 'route_pdf' => '/SM/1/cr1.pdf', 'obtained_at' => '2026-06-10 09:00:00'],
             ];
         }
 
