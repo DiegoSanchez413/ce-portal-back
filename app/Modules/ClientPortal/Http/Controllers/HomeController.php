@@ -53,7 +53,7 @@ final class HomeController
         $zone = ClientTime::zone($this->data->profile($session->leadId)->standard_time_zone ?? null);
 
         return response()->json([
-            'plan' => $plan === null ? null : [
+            'plan' => $plan === null || trim((string) $plan->plan_name) === '' || (int) $plan->months <= 0 ? null : [
                 'name' => (string) $plan->plan_name,
                 'status' => in_array($status, self::LOYAL, true) ? 'service_completed' : 'active',
                 'paid_payments' => min((int) $plan->paid_months, (int) $plan->months),

@@ -50,7 +50,7 @@ final class PaymentsController
     {
         $session = CurrentSession::of($request);
         $payment = collect(PaymentHistory::fromRows($this->data->payments($session->accountId)))
-            ->first(fn (array $p): bool => $p['transaction_id'] === $transactionId && $p['status'] === 'approved');
+            ->first(fn (array $p): bool => $p['receipt_id'] !== null && $p['receipt_id'] === $transactionId);
 
         if ($payment === null) {
             abort(404);
@@ -63,7 +63,8 @@ final class PaymentsController
             ['amount' => $payment['amount']], 'transaction', $transactionId);
 
         return response()->json($payment + [
-            'plan' => $plan === null ? null : ['name' => (string) $plan->plan_name, 'total_payments' => (int) $plan->months],
+            'plan' => $plan === null || trim((string) $plan->plan_name) === '' || (int) $plan->months <= 0 ? null
+                : ['name' => (string) $plan->plan_name, 'total_payments' => (int) $plan->months],
             'client' => Names::full($lead->first_name ?? null, $lead->last_name ?? null),
             'account' => (string) ($account->account ?? ''),
         ]);

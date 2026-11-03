@@ -20,6 +20,18 @@ class AccountData
 
     private const LEGACY_LETTER_TYPES = [1, 2];
 
+    private const DECLINED_STATUSES = [2, 3, 6, 7, 20, 22];
+
+    private const MODALITY_MONTHLY = 1;
+
+    private const MODALITY_INITIAL = 2;
+
+    private const MODALITY_CHARGE = 4;
+
+    private const METHOD_CARD = 1;
+
+    private const TYPE_REFUND = 11;
+
     // Plan vigente (renovación o plan de la venta), mensualidad del recurrente y meses pagados.
     public function plan(string $accountId): ?stdClass
     {
@@ -46,12 +58,10 @@ class AccountData
             SQL, [$accountId]);
     }
 
-    // Totales que mantiene el Soft por triggers (lo mismo que muestra Account Balance).
+    // Pagos y cargos con las mismas funciones que usa get_account para el Account Balance.
     public function balance(string $accountId): ?stdClass
     {
-        return DB::table('client_balance_financial')
-            ->where('client_account_id', $accountId)
-            ->first(['total_payment', 'total_charged']);
+        return DB::selectOne('SELECT total_payment(?) AS total_payment, total_charge(?) AS total_charged', [$accountId, $accountId]);
     }
 
     /** @return array{date: CarbonImmutable, amount: float}|null próximo cobro automático con tarjeta */
@@ -153,7 +163,31 @@ class AccountData
     /** @return list<stdClass> filas del panel Payments de Transaction Records */
     public function payments(string $accountId): array
     {
-        return array_values(DB::select('CALL get_account_payments(?)', [$accountId]));
+        $panel = array_values(DB::select('CALL get_account_payments(?)', [$accountId]));
+        $listed = array_map(fn (stdClass $row): string => (string) ($row->transaction_id ?? ''), $panel);
+        $extra = array_filter($this->declinedAndRefunds($accountId), fn (stdClass $row): bool => ! in_array((string) $row->transaction_id, $listed, true));
+
+        return [...$panel, ...array_values($extra)];
+    }
+
+    /** @return list<stdClass> cobros con tarjeta declinados y reembolsos, con la forma de get_account_payments */
+    private function declinedAndRefunds(string $accountId): array
+    {
+        return array_values(DB::table('transactions as t')
+            ->where('t.client_acount_id', $accountId)
+            ->where(fn ($q) => $q
+                ->where(fn ($d) => $d->whereIn('t.status_transaction_id', self::DECLINED_STATUSES)
+                    ->whereIn('t.modality_transaction_id', [self::MODALITY_MONTHLY, self::MODALITY_INITIAL, self::MODALITY_CHARGE])
+                    ->where('t.method_transaction_id', self::METHOD_CARD))
+                ->orWhere('t.type_transaction_id', self::TYPE_REFUND))
+            ->whereNull('t.deleted_at')
+            ->get([
+                't.id as t_id', 't.transaction_id', 't.settlement_date', 't.amount',
+                't.type_transaction_id', 't.status_transaction_id', 't.modality_transaction_id',
+                DB::raw("CASE WHEN t.type_transaction_id = 11 THEN 'Refund' WHEN t.modality_transaction_id = 1 THEN 'Monthly Payment' WHEN t.modality_transaction_id = 2 THEN 'Initial payment' ELSE '' END AS type"),
+                DB::raw("CONCAT('Card(', t.card_number, ')') AS method_payment"),
+            ])
+            ->all());
     }
 
     public function profile(int $leadId): ?stdClass

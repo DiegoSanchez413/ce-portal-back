@@ -114,12 +114,14 @@ use OpenApi\Attributes as OA;
     new OA\Property(property: 'experian', ref: '#/components/schemas/BureauScore'),
     new OA\Property(property: 'transunion', ref: '#/components/schemas/BureauScore'),
 ])]
-#[OA\Schema(schema: 'PaymentItem', required: ['transaction_id', 'date', 'concept', 'label', 'amount', 'card_last4', 'status', 'plan_payment'], properties: [
-    new OA\Property(property: 'transaction_id', type: 'string'),
+#[OA\Schema(schema: 'PaymentItem', required: ['transaction_id', 'receipt_id', 'date', 'concept', 'label', 'amount', 'method', 'card_last4', 'status', 'plan_payment'], properties: [
+    new OA\Property(property: 'transaction_id', type: 'string', nullable: true),
+    new OA\Property(property: 'receipt_id', type: 'string', nullable: true),
     new OA\Property(property: 'date', type: 'string', format: 'date'),
-    new OA\Property(property: 'concept', type: 'string', enum: ['initial_payment', 'monthly_payment', 'charge', 'other']),
+    new OA\Property(property: 'concept', type: 'string', enum: ['initial_payment', 'monthly_payment', 'charge', 'void', 'refund', 'yearly_total', 'other']),
     new OA\Property(property: 'label', type: 'string'),
     new OA\Property(property: 'amount', type: 'number'),
+    new OA\Property(property: 'method', type: 'string', enum: ['card', 'cash', 'check', 'money_order'], nullable: true),
     new OA\Property(property: 'card_last4', type: 'string', nullable: true),
     new OA\Property(property: 'status', type: 'string', enum: ['approved', 'declined', 'refunded', 'voided', 'other']),
     new OA\Property(property: 'plan_payment', type: 'integer', nullable: true),

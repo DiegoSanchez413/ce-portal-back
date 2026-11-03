@@ -161,7 +161,7 @@ it('calcula los montos de Payments y el historial del más reciente al más anti
         ->assertJsonPath('plan_total', 708)
         ->assertJsonPath('paid', 177)
         ->assertJsonPath('remaining', 531)
-        ->assertJsonPath('history.0', ['transaction_id' => 'T4', 'date' => '2026-09-01', 'concept' => 'monthly_payment', 'label' => 'Monthly Payment', 'amount' => 59, 'card_last4' => '2787', 'status' => 'approved', 'plan_payment' => 3])
+        ->assertJsonPath('history.0', ['transaction_id' => 'T4', 'receipt_id' => 'T4', 'date' => '2026-09-01', 'concept' => 'monthly_payment', 'label' => 'Monthly Payment', 'amount' => 59, 'method' => 'card', 'card_last4' => '2787', 'status' => 'approved', 'plan_payment' => 3])
         ->assertJsonPath('history.1.status', 'voided')
         ->assertJsonPath('history.1.concept', 'charge')
         ->assertJsonPath('history.3.plan_payment', 1);
