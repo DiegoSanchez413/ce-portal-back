@@ -9,7 +9,6 @@ use App\Modules\ClientPortal\Domain\Eligibility;
 use App\Modules\ClientPortal\Domain\Phone;
 use App\Modules\ClientPortal\Http\PortalCookie;
 use App\Modules\ClientPortal\Infrastructure\ClientDirectory;
-use App\Modules\ClientPortal\Infrastructure\DevSession;
 use App\Modules\ClientPortal\Infrastructure\PortalSession;
 use App\Modules\ClientPortal\Infrastructure\PortalSettings;
 use App\Modules\ClientPortal\Infrastructure\SessionStore;
@@ -29,7 +28,6 @@ final class AuthenticatePortalSession
         private readonly ClientDirectory $directory,
         private readonly PortalSettings $settings,
         private readonly Reactivation $reactivation,
-        private readonly DevSession $devSession,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -37,11 +35,6 @@ final class AuthenticatePortalSession
         $cookie = $request->cookie(SessionStore::COOKIE);
         $token = is_string($cookie) ? $cookie : '';
         $session = $token === '' ? null : $this->sessions->findActiveByToken($token);
-
-        $devToken = null;
-        if ($session === null && ($dev = $this->devSession->open($request)) !== null) {
-            [$session, $devToken] = $dev;
-        }
 
         if ($session === null) {
             return $this->unauthenticated('unauthenticated');
@@ -82,16 +75,6 @@ final class AuthenticatePortalSession
 
         $request->attributes->set('portal_session', $session);
         $response = $next($request);
-
-        if ($devToken !== null) {
-            $response->headers->setCookie(PortalCookie::make($devToken, true));
-        }
-        if ($this->devSession->enabled()) {
-            $loggedOut = $request->route()?->getActionMethod() === 'logout' && $response->isSuccessful();
-            if ($loggedOut || $request->cookie(DevSession::PAUSE_COOKIE) !== null) {
-                $response->headers->setCookie($this->devSession->pauseCookie($loggedOut));
-            }
-        }
 
         if ($session->trustedDevice && $session->lastSeenAt->diffInHours(now()) >= 24) {
             $response->headers->setCookie(PortalCookie::make($token, true));

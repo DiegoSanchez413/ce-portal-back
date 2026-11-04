@@ -17,7 +17,7 @@ use OpenApi\Attributes as OA;
     new OA\Property(property: 'expires_in', type: 'integer', example: 300),
 ])]
 #[OA\Schema(schema: 'LoginError', required: ['code', 'message'], properties: [
-    new OA\Property(property: 'code', type: 'string', enum: ['invalid_identifier', 'turnstile_failed', 'incorrect_code', 'expired_code', 'locked', 'resend_too_soon', 'invalid_challenge', 'send_failed', 'no_email', 'unauthenticated', 'session_expired', 'portal_disabled']),
+    new OA\Property(property: 'code', type: 'string', enum: ['invalid_identifier', 'turnstile_failed', 'incorrect_code', 'expired_code', 'locked', 'resend_too_soon', 'too_many_requests', 'invalid_challenge', 'send_failed', 'no_email', 'unauthenticated', 'session_expired', 'portal_disabled']),
     new OA\Property(property: 'message', type: 'string'),
     new OA\Property(property: 'attempts_left', type: 'integer'),
     new OA\Property(property: 'until', type: 'string', format: 'date-time'),

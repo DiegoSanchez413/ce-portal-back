@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\ClientPortal\Mail\LoginCodeMail;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -111,6 +112,40 @@ it('no reenvía antes de 60 segundos y permite pedir el código por correo', fun
     Mail::assertSent(LoginCodeMail::class, fn ($mail) => $mail->hasTo('luis@gmail.com'));
 });
 
+it('arma el SMS y el correo del código con las plantillas del CEO', function (): void {
+    Mail::fake();
+    DB::table('client_portal_message_templates')->insert([
+        ['type' => 'ACCESS_CODE_SMS', 'channel' => 'sms', 'subject_es' => null, 'subject_en' => null,
+            'body_es' => 'Código @code', 'body_en' => 'Use @code to sign in', 'sender_email' => null],
+        ['type' => 'ACCESS_CODE_EMAIL', 'channel' => 'email', 'subject_es' => 'Código', 'subject_en' => 'Code @code',
+            'body_es' => 'Código @code', 'body_en' => 'Your code: @code. Call @phone', 'sender_email' => 'portal@creditexperts.us'],
+    ]);
+    $lead = SoftFixtures::lead('(626) 346-7630');
+    SoftFixtures::account($lead, 'CE1009757');
+    [$challenge] = portalRequestCode('6263467630');
+
+    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/sms')
+        && preg_match('/^Use (\d{6}) to sign in\n\n@my\.creditexperts\.us #\1$/', (string) $r['text']) === 1);
+
+    $this->travel(61)->seconds();
+    $this->postJson('/api/v1/auth/resend', ['challenge_id' => $challenge, 'channel' => 'email'])->assertOk();
+
+    Mail::assertSent(LoginCodeMail::class, fn (LoginCodeMail $mail): bool => preg_match('/^Code \d{6}$/', $mail->subjectLine) === 1
+        && preg_match('/^Your code: \d{6}\. Call \(855\) 517-0390$/', $mail->body) === 1
+        && $mail->supportPhone === '(855) 517-0390'
+        && $mail->hasFrom('portal@creditexperts.us'));
+});
+
+it('usa el texto por defecto cuando la plantilla no tiene @code', function (): void {
+    DB::table('client_portal_message_templates')->insert(['type' => 'ACCESS_CODE_SMS', 'channel' => 'sms',
+        'body_es' => 'Sin código', 'body_en' => 'No code here']);
+    $lead = SoftFixtures::lead('(626) 346-7630');
+    SoftFixtures::account($lead, 'CE1009757');
+    portalRequestCode('6263467630');
+
+    Http::assertSent(fn (Request $r): bool => str_starts_with((string) $r['text'], 'Your Credit Experts code is '));
+});
+
 it('muestra el selector cuando el celular es de varios clientes', function (): void {
     $luis = SoftFixtures::lead('(626) 346-7630', 'LUIS', 'alvarez');
     $ana = SoftFixtures::lead('(626) 346-7630', 'Ana', 'Bravo', null);
@@ -178,4 +213,26 @@ it('niega el acceso cuando el switch Portal access está apagado', function (): 
     DB::table('client_portal_settings')->insert(['lead_id' => $lead, 'portal_enabled' => false]);
 
     portalSignIn('6263467630')->assertJsonPath('status', 'no_access');
+});
+
+it('al pasar el límite por IP responde 429 con la hora en que puede volver a intentar', function (): void {
+    foreach (range(10, 19) as $n) {
+        $this->postJson('/api/v1/auth/code', ['identifier' => "(555) 000-11{$n}", 'language' => 'en'])->assertOk();
+    }
+
+    $response = $this->postJson('/api/v1/auth/code', ['identifier' => '(555) 000-1120', 'language' => 'en'])
+        ->assertStatus(429)
+        ->assertJsonPath('code', 'too_many_requests');
+
+    expect(CarbonImmutable::parse((string) $response->json('until'))->isFuture())->toBeTrue();
+});
+
+it('arma el correo del código con el diseño, el código resaltado y el logo', function (): void {
+    $html = (new LoginCodeMail('Your code', "Your code is 483920.\n\nIt expires in 5 minutes.", '483920', 'en', '(855) 517-0390'))->render();
+
+    expect($html)->toContain('letter-spacing:4px;">483920</span>')
+        ->toContain('/images/ce-email-logo.png')
+        ->toContain('It expires in 5 minutes.')
+        ->toContain('Client portal')
+        ->toContain('Credit Experts · (855) 517-0390 ·');
 });

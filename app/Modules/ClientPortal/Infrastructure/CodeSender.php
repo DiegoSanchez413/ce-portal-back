@@ -14,18 +14,22 @@ use Throwable;
 // Entrega el código: SMS por la línea de RingCentral del Soft o correo por el SMTP.
 final class CodeSender
 {
-    public function __construct(private readonly SoftGateway $soft) {}
+    public function __construct(
+        private readonly SoftGateway $soft,
+        private readonly MessageTemplates $templates,
+    ) {}
 
     public function send(string $channel, string $destination, string $code, string $language): void
     {
         try {
             if ($channel === 'email') {
-                Mail::to($destination)->send(new LoginCodeMail($code, $language));
+                $email = $this->templates->codeEmail($code, $language);
+                Mail::to($destination)->send(new LoginCodeMail($email['subject'], $email['body'], $code, $language, $email['phone'], $email['sender']));
 
                 return;
             }
 
-            $text = __('client_portal.code_sms', ['code' => $code], $language);
+            $text = $this->templates->codeSms($code, $language);
 
             if (config('client_portal.sms_driver') === 'log' && ! app()->isProduction()) {
                 Log::info('client_portal.sms', ['mobile' => $destination, 'text' => $text]);

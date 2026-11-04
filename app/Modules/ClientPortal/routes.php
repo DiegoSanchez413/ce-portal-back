@@ -33,7 +33,6 @@ Route::middleware([AssignPortalDevice::class, AuthenticatePortalSession::class])
         Route::get('clients', 'clients');
         Route::post('switch-client', 'switchClient');
         Route::post('switch-account', 'switchAccount');
-        Route::post('language', 'language');
         Route::post('logout', 'logout');
     });
 

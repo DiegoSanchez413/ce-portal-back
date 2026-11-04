@@ -125,26 +125,6 @@ final class SessionController
     }
 
     #[OA\Post(
-        path: '/session/language',
-        operationId: 'setLanguage',
-        summary: 'Save the portal language of the client',
-        tags: ['Session'],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
-            required: ['language'], properties: [new OA\Property(property: 'language', type: 'string', enum: ['en', 'es'])],
-        )),
-        responses: [new OA\Response(response: 204, description: 'Saved')],
-    )]
-    public function language(Request $request): Response
-    {
-        $session = $this->session($request);
-        $language = (string) $request->validate(['language' => ['required', 'in:en,es']])['language'];
-
-        $this->settings->setLanguage($session->leadId, $language);
-
-        return response()->noContent();
-    }
-
-    #[OA\Post(
         path: '/session/logout',
         operationId: 'logout',
         summary: 'Sign out of this device',

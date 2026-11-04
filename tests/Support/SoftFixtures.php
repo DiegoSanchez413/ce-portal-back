@@ -22,6 +22,16 @@ final class SoftFixtures
             $table->string('email')->nullable();
             $table->string('language', 2)->nullable();
         });
+        Schema::create('client_portal_message_templates', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('type', 40)->unique();
+            $table->string('channel', 5);
+            $table->string('subject_es')->nullable();
+            $table->string('subject_en')->nullable();
+            $table->text('body_es');
+            $table->text('body_en');
+            $table->string('sender_email')->nullable();
+        });
         Schema::create('clients', function (Blueprint $table): void {
             $table->char('id', 36)->primary();
             $table->unsignedInteger('lead_id');

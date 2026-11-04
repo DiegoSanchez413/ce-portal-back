@@ -103,12 +103,24 @@ it('lleva las visitas a una fila nueva cuando se cambia de cuenta en la misma se
         ->and(DB::table('client_portal_events')->where('section', 'home')->count())->toBe(2);
 });
 
-it('guarda el idioma del portal del cliente', function (): void {
+it('usa el idioma de leads.language para la sesión y el código', function (): void {
     [$lead, , $cookie] = portalSession();
 
-    $this->withCredentials()->withUnencryptedCookie('cp_session', $cookie)->postJson('/api/v1/session/language', ['language' => 'es'])->assertNoContent();
+    $this->withCredentials()->withUnencryptedCookie('cp_session', $cookie)->getJson('/api/v1/session')->assertJsonPath('language', 'en');
 
-    expect(DB::table('client_portal_settings')->where('lead_id', $lead)->value('portal_language'))->toBe('es');
+    DB::table('leads')->where('id', $lead)->update(['language' => 'ES']);
+    $this->withCredentials()->withUnencryptedCookie('cp_session', $cookie)->getJson('/api/v1/session')->assertJsonPath('language', 'es');
+    $challenge = $this->postJson('/api/v1/auth/code', ['identifier' => '6263467630', 'language' => 'en'])->assertOk()->json('challenge_id');
+    expect(DB::table('client_portal_challenges')->where('id', $challenge)->value('language'))->toBe('es');
+
+    DB::table('leads')->where('id', $lead)->update(['language' => '0']);
+    $this->withCredentials()->withUnencryptedCookie('cp_session', $cookie)->getJson('/api/v1/session')->assertJsonPath('language', null);
+});
+
+it('ya no guarda el idioma elegido dentro del portal', function (): void {
+    [, , $cookie] = portalSession();
+
+    $this->withCredentials()->withUnencryptedCookie('cp_session', $cookie)->postJson('/api/v1/session/language', ['language' => 'es'])->assertNotFound();
 });
 
 it('rechaza la API sin cookie de sesión', function (): void {
