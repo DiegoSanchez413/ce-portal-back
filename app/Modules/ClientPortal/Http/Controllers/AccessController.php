@@ -4,41 +4,51 @@ declare(strict_types=1);
 
 namespace App\Modules\ClientPortal\Http\Controllers;
 
+use App\Modules\ClientPortal\Application\AccessDevices;
 use App\Modules\ClientPortal\Http\CurrentSession;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
-// My access: últimas 20 sesiones del cliente y cierre de las demás.
+// My access: dispositivos del cliente con sus últimas sesiones, cierre por dispositivo y de todos los demás.
 final class AccessController
 {
-    #[OA\Get(path: '/access/sessions', operationId: 'listAccessSessions', summary: 'Last 20 sessions', tags: ['Account'], responses: [
-        new OA\Response(response: 200, description: 'Sessions', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/AccessSession'))),
+    public function __construct(private readonly AccessDevices $devices) {}
+
+    #[OA\Get(path: '/access/devices', operationId: 'listAccessDevices', summary: 'Devices with their recent sessions', tags: ['Account'], responses: [
+        new OA\Response(response: 200, description: 'Devices', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/AccessDevice'))),
     ])]
     public function index(Request $request): JsonResponse
     {
         $session = CurrentSession::of($request);
 
-        $rows = DB::table('client_portal_sessions')
-            ->where('lead_id', $session->leadId)
-            ->orderByDesc('started_at')
-            ->orderByDesc('id')
-            ->limit(20)
-            ->get(['id', 'device', 'os', 'browser', 'city', 'region', 'started_at']);
+        return response()->json($this->devices->of($session->leadId, $session->id));
+    }
 
-        return response()->json($rows->map(fn (\stdClass $row): array => [
-            'id' => (int) $row->id,
-            'device' => $row->device === 'Computer' && $row->os !== 'Other' ? (string) $row->os : (string) $row->device,
-            'browser' => (string) $row->browser,
-            'is_phone' => in_array($row->device, ['iPhone', 'Android phone'], true),
-            'city' => $row->city,
-            'region' => $row->region,
-            'started_at' => CarbonImmutable::parse((string) $row->started_at)->toIso8601String(),
-            'current' => (int) $row->id === $session->id,
-        ])->values());
+    #[OA\Post(path: '/access/devices/{key}/sign-out', operationId: 'signOutDevice', summary: 'End the open sessions of one device', tags: ['Account'],
+        parameters: [new OA\Parameter(name: 'key', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Done'),
+            new OA\Response(response: 404, description: 'Unknown device'),
+            new OA\Response(response: 422, description: 'This device: use logout'),
+        ])]
+    public function signOutDevice(Request $request, string $key): Response|JsonResponse
+    {
+        $session = CurrentSession::of($request);
+        $device = collect($this->devices->of($session->leadId, $session->id))->firstWhere('key', $key);
+
+        if ($device === null) {
+            return response()->json(['code' => 'not_found', 'message' => 'Device not found.'], 404);
+        }
+        if ($device['current'] === true) {
+            return response()->json(['code' => 'this_device', 'message' => 'Use sign out to end this device.'], 422);
+        }
+
+        $this->devices->signOut($session->leadId, $key, $session->id);
+
+        return response()->noContent();
     }
 
     #[OA\Post(path: '/access/sign-out-others', operationId: 'signOutOtherDevices', summary: 'End every other session', tags: ['Account'], responses: [

@@ -15,10 +15,11 @@ use App\Modules\ClientPortal\Http\Controllers\PaymentsController;
 use App\Modules\ClientPortal\Http\Controllers\ProfileController;
 use App\Modules\ClientPortal\Http\Controllers\SecurityController;
 use App\Modules\ClientPortal\Http\Controllers\SessionController;
+use App\Modules\ClientPortal\Http\Middleware\AssignPortalDevice;
 use App\Modules\ClientPortal\Http\Middleware\AuthenticatePortalSession;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('auth')->controller(LoginController::class)->group(function (): void {
+Route::prefix('auth')->middleware(AssignPortalDevice::class)->controller(LoginController::class)->group(function (): void {
     Route::post('code', 'requestCode')->middleware('throttle:portal-code');
     Route::post('resend', 'resend')->middleware('throttle:portal-code');
     Route::post('verify', 'verify')->middleware('throttle:portal-verify');
@@ -26,7 +27,7 @@ Route::prefix('auth')->controller(LoginController::class)->group(function (): vo
     Route::post('reactivation', 'reactivation')->middleware('throttle:portal-verify');
 });
 
-Route::middleware(AuthenticatePortalSession::class)->group(function (): void {
+Route::middleware([AssignPortalDevice::class, AuthenticatePortalSession::class])->group(function (): void {
     Route::controller(SessionController::class)->prefix('session')->group(function (): void {
         Route::get('/', 'show');
         Route::get('clients', 'clients');
@@ -46,7 +47,8 @@ Route::middleware(AuthenticatePortalSession::class)->group(function (): void {
     Route::post('payments/{transactionId}/receipt', [PaymentsController::class, 'receipt']);
     Route::get('profile', [ProfileController::class, 'show']);
     Route::post('profile/change-request', [ProfileController::class, 'changeRequest'])->middleware('throttle:portal-requests');
-    Route::get('access/sessions', [AccessController::class, 'index']);
+    Route::get('access/devices', [AccessController::class, 'index']);
+    Route::post('access/devices/{key}/sign-out', [AccessController::class, 'signOutDevice'])->where('key', '[a-f0-9-]{36,40}');
     Route::post('access/sign-out-others', [AccessController::class, 'signOutOthers']);
 
     Route::post('security/code', [SecurityController::class, 'send'])->middleware('throttle:portal-code');

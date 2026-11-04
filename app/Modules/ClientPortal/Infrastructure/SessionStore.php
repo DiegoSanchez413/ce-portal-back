@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\ClientPortal\Infrastructure;
 
 use App\Modules\ClientPortal\Domain\UserAgent;
+use App\Modules\ClientPortal\Http\DeviceCookie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -41,6 +42,7 @@ final class SessionStore
             'login_method' => $challenge->loginMethod,
             'otp_channel' => $challenge->verifiedChannel ?? 'sms',
             'trusted_device' => $trusted,
+            'device_id' => DeviceCookie::of($request),
             'device' => $agent->device,
             'os' => $agent->os,
             'browser' => $agent->browser,

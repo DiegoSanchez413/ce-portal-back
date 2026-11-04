@@ -123,7 +123,9 @@ it('muestra el selector cuando el celular es de varios clientes', function (): v
         ->assertOk()
         ->assertJsonPath('status', 'select_client')
         ->assertJsonPath('clients.0.label', 'Luis A. · Credit Experts')
-        ->assertJsonPath('clients.1.label', 'Ana B. · Credit Experts');
+        ->assertJsonPath('clients.1.label', 'Ana B. · Credit Experts')
+        ->assertJsonPath('clients.1.account_hint', '0002')
+        ->assertJsonPath('clients.1.current', false);
 
     $response = $this->postJson('/api/v1/auth/select-client', ['challenge_id' => $challenge, 'lead_id' => $ana, 'keep_signed_in' => false])
         ->assertOk()
@@ -133,6 +135,12 @@ it('muestra el selector cuando el celular es de varios clientes', function (): v
         ->getJson('/api/v1/session')
         ->assertJsonPath('account.number', 'CE1000002')
         ->assertJsonPath('shared_phone', true);
+
+    $this->withCredentials()->withUnencryptedCookie('cp_session', portalCookie($response))
+        ->getJson('/api/v1/session/clients')
+        ->assertJsonPath('0.current', false)
+        ->assertJsonPath('1.current', true)
+        ->assertJsonPath('1.account_hint', '0002');
 });
 
 it('con número de cuenta entra directo a esa cuenta', function (): void {

@@ -135,7 +135,7 @@ final class HomeController
     private function cardAlert(string $accountId): ?array
     {
         try {
-            $default = collect($this->cards->list($accountId)['cards'])->first(fn (array $c): bool => $c['is_default']);
+            $default = collect($this->cards->cachedList($accountId)['cards'])->first(fn (array $c): bool => $c['is_default']);
         } catch (Throwable) {
             return null;
         }

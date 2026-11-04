@@ -27,7 +27,7 @@ final class ClientRequests
         private readonly EventLog $events,
     ) {}
 
-    /** @param array<string, string> $payload */
+    /** @param array<string, mixed> $payload */
     public function create(PortalSession $session, string $type, string $recipient, array $payload = [], string $detail = ''): int
     {
         $lead = $this->directory->lead($session->leadId);
@@ -57,9 +57,20 @@ final class ClientRequests
             ]);
 
             $this->events->record(self::EVENTS[$type], $session->id, $session->leadId, $session->accountId,
-                isset($payload['field']) ? ['category' => $payload['field']] : [], 'request', (string) $id);
+                self::category($payload), 'request', (string) $id);
 
             return $id;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, string>
+     */
+    private static function category(array $payload): array
+    {
+        $changes = $payload['changes'] ?? null;
+
+        return is_array($changes) ? ['category' => implode(',', array_column($changes, 'field'))] : [];
     }
 }

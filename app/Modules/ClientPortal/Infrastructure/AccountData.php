@@ -20,6 +20,9 @@ class AccountData
 
     private const LEGACY_LETTER_TYPES = [1, 2];
 
+    // Todos los status_dispute que usa el Soft (0 y 1).
+    private const LEGACY_DISPUTE_STATUSES = [0, 1];
+
     private const DECLINED_STATUSES = [2, 3, 6, 7, 20, 22];
 
     private const MODALITY_MONTHLY = 1;
@@ -142,6 +145,7 @@ class AccountData
         $legacy = DB::table('ncr_round_letters')
             ->whereIn('client_account_id', $accountIds)
             ->where('state', self::LEGACY_LETTER_SENT)
+            ->whereIn('status_dispute', self::LEGACY_DISPUTE_STATUSES)
             ->whereIn('type_send', self::LEGACY_LETTER_TYPES)
             ->whereNull('deleted_at')
             ->selectRaw('MAX(date_send) AS sent_at, COUNT(DISTINCT DATE(date_send)) AS rounds')

@@ -10,6 +10,7 @@ use App\Modules\ClientPortal\Application\Reactivation;
 use App\Modules\ClientPortal\Domain\LoginException;
 use App\Modules\ClientPortal\Domain\LoginIdentifier;
 use App\Modules\ClientPortal\Domain\Phone;
+use App\Modules\ClientPortal\Http\ClientOptions;
 use App\Modules\ClientPortal\Http\PortalCookie;
 use App\Modules\ClientPortal\Infrastructure\ChallengeStore;
 use App\Modules\ClientPortal\Infrastructure\ClientDirectory;
@@ -34,6 +35,7 @@ final class LoginController
         private readonly PortalSettings $settings,
         private readonly ClientAccess $access,
         private readonly Reactivation $reactivation,
+        private readonly ClientOptions $options,
     ) {}
 
     #[OA\Post(
@@ -162,7 +164,7 @@ final class LoginController
         if ($challenge->loginMethod === 'phone' && count($eligible) > 1) {
             return response()->json([
                 'status' => 'select_client',
-                'clients' => array_map(fn (int $leadId): array => $this->clientOption($leadId), $eligible),
+                'clients' => $this->options->of($eligible),
             ]);
         }
 
@@ -305,19 +307,6 @@ final class LoginController
                 'available_at' => $accountId === '' ? null : $this->reactivation->availableAt($accountId)?->toIso8601String(),
             ],
         ]);
-    }
-
-    /** @return array{lead_id: int, label: string} */
-    private function clientOption(int $leadId): array
-    {
-        $lead = $this->directory->lead($leadId);
-        $first = trim((string) ($lead->first_name ?? ''));
-        $initial = mb_strtoupper(mb_substr(trim((string) ($lead->last_name ?? '')), 0, 1));
-
-        return [
-            'lead_id' => $leadId,
-            'label' => trim(ucwords(mb_strtolower($first)).($initial !== '' ? " {$initial}." : '')).' · Credit Experts',
-        ];
     }
 
     private function email(mixed $email): ?string

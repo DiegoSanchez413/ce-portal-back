@@ -22,9 +22,11 @@ use OpenApi\Attributes as OA;
     new OA\Property(property: 'attempts_left', type: 'integer'),
     new OA\Property(property: 'until', type: 'string', format: 'date-time'),
 ])]
-#[OA\Schema(schema: 'ClientOption', required: ['lead_id', 'label'], properties: [
+#[OA\Schema(schema: 'ClientOption', required: ['lead_id', 'label', 'account_hint', 'current'], properties: [
     new OA\Property(property: 'lead_id', type: 'integer'),
     new OA\Property(property: 'label', type: 'string', example: 'Luis A. · Credit Experts'),
+    new OA\Property(property: 'account_hint', type: 'string', nullable: true, example: '7386'),
+    new OA\Property(property: 'current', type: 'boolean'),
 ])]
 #[OA\Schema(schema: 'Reactivation', required: ['token', 'available_at'], properties: [
     new OA\Property(property: 'token', type: 'string', nullable: true),
@@ -156,14 +158,26 @@ use OpenApi\Attributes as OA;
     new OA\Property(property: 'specialist', type: 'string', nullable: true),
     new OA\Property(property: 'agent', type: 'string', nullable: true),
 ])]
-#[OA\Schema(schema: 'AccessSession', required: ['id', 'device', 'browser', 'is_phone', 'city', 'region', 'started_at', 'current'], properties: [
-    new OA\Property(property: 'id', type: 'integer'),
+#[OA\Schema(schema: 'AccessDevice', required: ['key', 'device', 'browser', 'is_phone', 'city', 'region', 'last_active_at', 'active', 'current', 'total_sessions', 'sessions'], properties: [
+    new OA\Property(property: 'key', type: 'string'),
     new OA\Property(property: 'device', type: 'string'),
     new OA\Property(property: 'browser', type: 'string'),
     new OA\Property(property: 'is_phone', type: 'boolean'),
     new OA\Property(property: 'city', type: 'string', nullable: true),
     new OA\Property(property: 'region', type: 'string', nullable: true),
+    new OA\Property(property: 'last_active_at', type: 'string', format: 'date-time'),
+    new OA\Property(property: 'active', type: 'boolean'),
+    new OA\Property(property: 'current', type: 'boolean'),
+    new OA\Property(property: 'total_sessions', type: 'integer'),
+    new OA\Property(property: 'sessions', type: 'array', items: new OA\Items(ref: '#/components/schemas/AccessSession')),
+])]
+#[OA\Schema(schema: 'AccessSession', required: ['id', 'started_at', 'city', 'region', 'active', 'end_reason', 'current'], properties: [
+    new OA\Property(property: 'id', type: 'integer'),
     new OA\Property(property: 'started_at', type: 'string', format: 'date-time'),
+    new OA\Property(property: 'city', type: 'string', nullable: true),
+    new OA\Property(property: 'region', type: 'string', nullable: true),
+    new OA\Property(property: 'active', type: 'boolean'),
+    new OA\Property(property: 'end_reason', type: 'string', nullable: true, enum: ['logout', 'inactivity', 'expired', 'status_change', 'phone_change', 'portal_disabled', 'signed_out_by_client']),
     new OA\Property(property: 'current', type: 'boolean'),
 ])]
 #[OA\Schema(schema: 'Card', required: ['id', 'brand', 'last4', 'expiration', 'expired', 'expires_soon', 'is_default'], properties: [

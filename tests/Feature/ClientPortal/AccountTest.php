@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\Support\SoftFixtures;
 
 // Datos del Soft simulados: plan, saldo, reportes, pagos y perfil de una cuenta.
@@ -195,22 +196,100 @@ it('muestra el perfil con solo el año de nacimiento y el Specialist abreviado',
         ->assertJsonMissingPath('dob');
 });
 
-it('envía la solicitud de cambio de datos al Agent', function (): void {
+it('envía al Agent una solicitud con varios datos a la vez', function (): void {
     fakeAccountData();
 
-    portalPost(signedInCookie(), 'profile/change-request', ['field' => 'address', 'details' => 'New address: 1 Elm St'])->assertNoContent();
+    portalPost(signedInCookie(), 'profile/change-request', ['changes' => [
+        ['field' => 'mobile', 'value' => '512 787 5975'],
+        ['field' => 'email', 'value' => 'Luis.New@Gmail.com'],
+        ['field' => 'address', 'value' => '1 Elm St, Austin, TX 78701'],
+    ]])->assertNoContent();
 
-    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/notifications')
-        && $r['recipient'] === 'agent' && str_contains((string) $r['text'], 'Data change request') && str_contains((string) $r['text'], 'Address'));
-    expect(DB::table('client_portal_events')->where('event_type', 'change_request')->value('metadata'))->toBe('{"category":"address"}');
+    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/notifications') && $r['recipient'] === 'agent'
+        && str_contains((string) $r['text'], 'Data change request')
+        && str_contains((string) $r['text'], 'Mobile number: (512) 787-5975 · Email: luis.new@gmail.com · Address: 1 Elm St, Austin, TX 78701'));
+    expect(DB::table('client_portal_events')->where('event_type', 'change_request')->value('metadata'))->toBe('{"category":"mobile,email,address"}')
+        ->and(json_decode((string) DB::table('client_portal_requests')->value('payload'), true)['changes'])->toHaveCount(3);
 });
 
-it('lista los accesos marcando este dispositivo y cierra los demás', function (): void {
+it('rechaza datos inválidos, repetidos u Other en la solicitud de cambio', function (array $changes, string $error): void {
+    fakeAccountData();
+
+    portalPost(signedInCookie(), 'profile/change-request', ['changes' => $changes])->assertUnprocessable()->assertJsonValidationErrors($error);
+    Http::assertNotSent(fn (Request $r): bool => str_ends_with($r->url(), '/notifications'));
+})->with([
+    'celular corto' => [[['field' => 'mobile', 'value' => '512 787']], 'changes.0.value'],
+    'correo inválido' => [[['field' => 'address', 'value' => '1 Elm St'], ['field' => 'email', 'value' => 'luis@']], 'changes.1.value'],
+    'dato repetido' => [[['field' => 'email', 'value' => 'a@b.com'], ['field' => 'email', 'value' => 'c@d.com']], 'changes.0.field'],
+    'other' => [[['field' => 'other', 'value' => 'algo']], 'changes.0.field'],
+    'sin cambios' => [[], 'changes'],
+]);
+
+it('agrupa los accesos por dispositivo con sus sesiones y marca este dispositivo', function (): void {
+    fakeAccountData();
+    SoftFixtures::account(SoftFixtures::lead('(626) 346-7630'), 'CE1009757');
+    $phone = '11111111-1111-4111-8111-111111111111';
+    $laptop = '22222222-2222-4222-8222-222222222222';
+
+    test()->withCredentials()->withUnencryptedCookie('cp_device', $phone);
+    portalSignIn('6263467630');
+    $this->travel(1)->minutes();
+    portalSignIn('6263467630');
+    $this->travel(1)->minutes();
+    test()->withUnencryptedCookie('cp_device', $laptop);
+    $current = portalCookie(portalSignIn('6263467630'));
+
+    portalGet($current, 'access/devices')->assertOk()->assertJsonCount(2)
+        ->assertJsonPath('0.key', $laptop)->assertJsonPath('0.current', true)->assertJsonPath('0.total_sessions', 1)
+        ->assertJsonPath('1.key', $phone)->assertJsonPath('1.current', false)->assertJsonPath('1.active', true)
+        ->assertJsonPath('1.total_sessions', 2)->assertJsonCount(2, '1.sessions');
+});
+
+it('agrupa las sesiones sin cookie de dispositivo por navegador, sistema y ciudad', function (): void {
+    fakeAccountData();
+    $current = signedInCookie();
+    portalSignIn('6263467630');
+    DB::table('client_portal_sessions')->update(['device_id' => null]);
+
+    portalGet($current, 'access/devices')->assertOk()->assertJsonCount(1)
+        ->assertJsonPath('0.total_sessions', 2)->assertJsonPath('0.current', true);
+});
+
+it('deja la cookie del dispositivo en el navegador y la conserva en los pedidos siguientes', function (): void {
+    $first = $this->postJson('/api/v1/auth/code', ['identifier' => '(555) 000-1111', 'language' => 'en']);
+    $cookie = collect($first->headers->getCookies())->first(fn ($c) => $c->getName() === 'cp_device');
+
+    expect($cookie?->isHttpOnly())->toBeTrue()->and(Str::isUuid((string) $cookie?->getValue()))->toBeTrue();
+
+    $again = $this->withCredentials()->withUnencryptedCookie('cp_device', (string) $cookie?->getValue())->postJson('/api/v1/auth/code', ['identifier' => '(555) 000-1111', 'language' => 'en']);
+    expect(collect($again->headers->getCookies())->contains(fn ($c) => $c->getName() === 'cp_device'))->toBeFalse();
+});
+
+it('cierra las sesiones de un dispositivo pero no el actual', function (): void {
+    fakeAccountData();
+    SoftFixtures::account(SoftFixtures::lead('(626) 346-7630'), 'CE1009757');
+    $phone = '33333333-3333-4333-8333-333333333333';
+    $laptop = '44444444-4444-4444-8444-444444444444';
+
+    test()->withCredentials()->withUnencryptedCookie('cp_device', $phone);
+    $other = portalCookie(portalSignIn('6263467630'));
+    test()->withUnencryptedCookie('cp_device', $laptop);
+    $current = portalCookie(portalSignIn('6263467630'));
+
+    portalPost($current, "access/devices/{$laptop}/sign-out")->assertUnprocessable()->assertJsonPath('code', 'this_device');
+    portalPost($current, 'access/devices/55555555-5555-4555-8555-555555555555/sign-out')->assertNotFound();
+    portalPost($current, "access/devices/{$phone}/sign-out")->assertNoContent();
+
+    portalGet($other, 'session')->assertUnauthorized();
+    portalGet($current, 'session')->assertOk();
+    portalGet($current, 'access/devices')->assertJsonPath('1.active', false)->assertJsonPath('1.sessions.0.end_reason', 'signed_out_by_client');
+});
+
+it('cierra todos los demás dispositivos', function (): void {
     fakeAccountData();
     $first = signedInCookie();
     $second = portalCookie(portalSignIn('6263467630'));
 
-    portalGet($second, 'access/sessions')->assertOk()->assertJsonCount(2)->assertJsonPath('0.current', true)->assertJsonPath('1.current', false);
     portalPost($second, 'access/sign-out-others')->assertNoContent();
 
     portalGet($first, 'session')->assertUnauthorized();

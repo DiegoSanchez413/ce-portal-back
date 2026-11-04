@@ -13,12 +13,15 @@ use App\Modules\ClientPortal\Infrastructure\ClientDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
 // Perfil de solo lectura (la fecha de nacimiento solo con el año) y solicitud de cambio al Agent.
 final class ProfileController
 {
-    private const FIELDS = ['mobile' => 'Mobile number', 'email' => 'Email', 'address' => 'Address', 'other' => 'Other'];
+    private const FIELDS = ['mobile' => 'Mobile number', 'email' => 'Email', 'address' => 'Address'];
+
+    private const INVALID = ['mobile' => 'Enter a valid mobile number.', 'email' => 'Enter a valid email.', 'address' => 'Enter the new address.'];
 
     #[OA\Get(path: '/profile', operationId: 'getProfile', summary: 'Client data on file', tags: ['Account'], responses: [
         new OA\Response(response: 200, description: 'Profile', content: new OA\JsonContent(ref: '#/components/schemas/Profile')),
@@ -48,21 +51,39 @@ final class ProfileController
     }
 
     #[OA\Post(path: '/profile/change-request', operationId: 'requestDataChange', summary: 'Ask the agent to change client data', tags: ['Account'],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['field', 'details'], properties: [
-            new OA\Property(property: 'field', type: 'string', enum: ['mobile', 'email', 'address', 'other']),
-            new OA\Property(property: 'details', type: 'string', maxLength: 500),
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['changes'], properties: [
+            new OA\Property(property: 'changes', type: 'array', minItems: 1, maxItems: 3, items: new OA\Items(required: ['field', 'value'], properties: [
+                new OA\Property(property: 'field', type: 'string', enum: ['mobile', 'email', 'address']),
+                new OA\Property(property: 'value', type: 'string', maxLength: 200),
+            ])),
         ])),
         responses: [new OA\Response(response: 204, description: 'Agent notified')])]
     public function changeRequest(Request $request, ClientRequests $requests): Response
     {
         $data = $request->validate([
-            'field' => ['required', 'in:'.implode(',', array_keys(self::FIELDS))],
-            'details' => ['required', 'string', 'max:500'],
+            'changes' => ['required', 'array', 'min:1', 'max:3'],
+            'changes.*.field' => ['required', 'distinct', 'in:'.implode(',', array_keys(self::FIELDS))],
+            'changes.*.value' => ['required', 'string', 'max:200'],
         ]);
 
-        $requests->create(CurrentSession::of($request), 'data_change', 'agent',
-            ['field' => (string) $data['field'], 'details' => (string) $data['details']],
-            self::FIELDS[$data['field']].': '.mb_substr((string) $data['details'], 0, 80));
+        // Cada dato se valida según su tipo y se guarda ya normalizado; el aviso al Agent los lista todos.
+        $changes = [];
+        foreach ($data['changes'] as $i => $change) {
+            $field = (string) $change['field'];
+            $value = trim((string) $change['value']);
+            $value = match ($field) {
+                'mobile' => Phone::format($value),
+                'email' => filter_var($value, FILTER_VALIDATE_EMAIL) === false ? null : mb_strtolower($value),
+                default => $value === '' ? null : $value,
+            };
+            if ($value === null) {
+                throw ValidationException::withMessages(["changes.$i.value" => self::INVALID[$field]]);
+            }
+            $changes[] = ['field' => $field, 'value' => $value];
+        }
+
+        $requests->create(CurrentSession::of($request), 'data_change', 'agent', ['changes' => $changes],
+            implode(' · ', array_map(fn (array $c): string => self::FIELDS[$c['field']].': '.$c['value'], $changes)));
 
         return response()->noContent();
     }

@@ -6,6 +6,7 @@ namespace App\Modules\ClientPortal\Http\Controllers;
 
 use App\Modules\ClientPortal\Application\Reactivation;
 use App\Modules\ClientPortal\Domain\Eligibility;
+use App\Modules\ClientPortal\Http\ClientOptions;
 use App\Modules\ClientPortal\Http\PortalCookie;
 use App\Modules\ClientPortal\Infrastructure\ClientDirectory;
 use App\Modules\ClientPortal\Infrastructure\EventLog;
@@ -26,6 +27,7 @@ final class SessionController
         private readonly SessionStore $sessions,
         private readonly EventLog $events,
         private readonly Reactivation $reactivation,
+        private readonly ClientOptions $options,
     ) {}
 
     #[OA\Get(
@@ -57,10 +59,7 @@ final class SessionController
     {
         $session = $this->session($request);
 
-        return response()->json(array_map(fn (int $leadId): array => [
-            'lead_id' => $leadId,
-            'label' => $this->shortName($leadId).' · Credit Experts',
-        ], $session->eligibleLeadIds));
+        return response()->json($this->options->of($session->eligibleLeadIds, $session->leadId));
     }
 
     #[OA\Post(
@@ -196,15 +195,6 @@ final class SessionController
             'shared_phone' => $session->isSharedPhone(),
             'language' => $this->settings->language($session->leadId),
         ];
-    }
-
-    private function shortName(int $leadId): string
-    {
-        $lead = $this->directory->lead($leadId);
-        $first = ucwords(mb_strtolower(trim((string) ($lead->first_name ?? ''))));
-        $initial = mb_strtoupper(mb_substr(trim((string) ($lead->last_name ?? '')), 0, 1));
-
-        return trim($first.($initial !== '' ? " {$initial}." : ''));
     }
 
     private function session(Request $request): PortalSession
