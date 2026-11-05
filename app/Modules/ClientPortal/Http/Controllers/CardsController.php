@@ -63,7 +63,7 @@ final class CardsController
             $this->events->record('card_added', $session->id, $session->leadId, $session->accountId,
                 ['brand' => $card['brand'], 'default' => $data['set_default']], 'card', (string) $card['id']);
 
-            if ($data['set_default']) {
+            if ($data['set_default'] && $card['is_default']) {
                 $this->afterDefaultChanged($session, $card['id'], $card['last4'], $soft);
             }
 

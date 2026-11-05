@@ -136,6 +136,11 @@ it('avisa en Inicio cuando la tarjeta del cobro automático venció', function (
     $cookie = payFixtures(status: 8);
     app()->instance(AccountData::class, new class extends AccountData
     {
+        public function balance(string $accountId): ?stdClass
+        {
+            return (object) ['total_payment' => 0, 'total_charged' => 0];
+        }
+
         public function plan(string $accountId): ?stdClass
         {
             return (object) ['plan_name' => 'LONG 12', 'months' => 12, 'plan_monthly' => 59, 'rb_monthly' => 59, 'paid_months' => 3];

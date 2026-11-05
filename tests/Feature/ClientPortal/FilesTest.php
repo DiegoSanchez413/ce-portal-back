@@ -69,6 +69,11 @@ it('lleva a Inicio los documentos que piden atención, y el SSN faltante solo si
     DB::table('wpi_file_requests')->insert(['lead_id' => $lead, 'document_type_id' => 3, 'status' => 'REQUESTED']);
     app()->instance(AccountData::class, new class extends AccountData
     {
+        public function balance(string $accountId): ?stdClass
+        {
+            return (object) ['total_payment' => 0, 'total_charged' => 0];
+        }
+
         public function plan(string $accountId): ?stdClass
         {
             return null;

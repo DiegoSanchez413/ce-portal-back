@@ -117,7 +117,12 @@ final class HomeController
 
         $next = $this->data->nextDebit($accountId);
 
-        return ['state' => 'current', 'next_date' => $next === null ? null : $next['date']->toDateString(), 'next_amount' => $next['amount'] ?? null];
+        return [
+            'state' => 'current',
+            'next_date' => $next === null ? null : $next['date']->toDateString(),
+            'next_amount' => $next['amount'] ?? null,
+            'amount_due' => $this->due->for($accountId, $status)['amount'] ?? null,
+        ];
     }
 
     /** @return list<array<string, mixed>> */

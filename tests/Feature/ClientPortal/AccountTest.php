@@ -102,7 +102,7 @@ it('arma el inicio de una cuenta al día', function (): void {
         ->assertJsonPath('scores.date', '2026-10-10')
         ->assertJsonPath('scores.equifax', ['score' => 640, 'delta' => 40])
         ->assertJsonPath('scores.transunion', ['score' => null, 'delta' => null])
-        ->assertJsonPath('payments', ['state' => 'current', 'next_date' => '2026-11-15', 'next_amount' => 59])
+        ->assertJsonPath('payments', ['state' => 'current', 'next_date' => '2026-11-15', 'next_amount' => 59, 'amount_due' => 59])
         ->assertJsonPath('appointment', ['date' => '2026-10-29', 'time' => '16:00', 'specialist' => 'Elvis R.'])
         ->assertJsonPath('dispute', ['round' => 2, 'sent_at' => '2026-10-05', 'respond_by' => '2026-11-19', 'window_closed' => false]);
 });
